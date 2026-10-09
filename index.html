@@ -1,0 +1,809 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>스마트 은퇴 설계 시뮬레이터</title>
+  <!-- Tailwind CSS -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Chart.js -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          colors: {
+            brand: {
+              50: '#ecfdf5',
+              100: '#d1fae5',
+              500: '#10b981',
+              600: '#059669',
+              700: '#047857',
+            }
+          }
+        }
+      }
+    }
+  </script>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Pretendard:wght@300;400;500;600;700;800&display=swap');
+    body {
+      font-family: 'Pretendard', -apple-system, BlinkMacSystemFont, system-ui, Roboto, sans-serif;
+    }
+    input[type=range] {
+      accent-color: #10b981;
+    }
+    /* Custom scrollbar */
+    ::-webkit-scrollbar {
+      width: 6px;
+      height: 6px;
+    }
+    ::-webkit-scrollbar-thumb {
+      background: #cbd5e1;
+      border-radius: 4px;
+    }
+    ::-webkit-scrollbar-thumb:hover {
+      background: #94a3b8;
+    }
+  </style>
+</head>
+<body class="bg-slate-50 text-slate-800 min-h-screen flex flex-col">
+
+  <!-- Header -->
+  <header class="bg-white border-b border-slate-200 sticky top-0 z-30 shadow-sm">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
+      <div class="flex items-center gap-3">
+        <div class="w-10 h-10 rounded-xl bg-emerald-600 flex items-center justify-center text-white shadow-md shadow-emerald-200">
+          <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+          </svg>
+        </div>
+        <div>
+          <h1 class="text-lg font-bold text-slate-900 tracking-tight">스마트 은퇴 자산 시뮬레이터</h1>
+          <p class="text-xs text-slate-500">복리 수익률 · 인플레이션 · 연금 통합 수지 분석</p>
+        </div>
+      </div>
+
+      <!-- Presets & Quick Actions -->
+      <div class="flex items-center gap-2">
+        <span class="text-xs text-slate-400 hidden sm:inline">추천 템플릿:</span>
+        <button onclick="applyPreset('standard')" class="px-2.5 py-1.5 text-xs font-medium rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 transition">일반 직장인</button>
+        <button onclick="applyPreset('fire')" class="px-2.5 py-1.5 text-xs font-medium rounded-lg bg-emerald-50 hover:bg-emerald-100 text-emerald-700 transition">파이어족 (조기은퇴)</button>
+        <button onclick="applyPreset('senior')" class="px-2.5 py-1.5 text-xs font-medium rounded-lg bg-blue-50 hover:bg-blue-100 text-blue-700 transition">은퇴 준비기(50대)</button>
+      </div>
+    </div>
+  </header>
+
+  <main class="flex-1 max-w-7xl w-full mx-auto p-4 sm:p-6 lg:p-8 grid grid-cols-1 lg:grid-cols-12 gap-8">
+
+    <!-- Left Controls Panel (Inputs) -->
+    <div class="lg:col-span-5 space-y-6">
+      
+      <!-- Basic Age & Timeline Card -->
+      <section class="bg-white p-5 rounded-2xl shadow-sm border border-slate-200">
+        <h2 class="text-base font-bold text-slate-900 mb-4 flex items-center gap-2">
+          <span class="w-2.5 h-2.5 rounded-full bg-emerald-500"></span>
+          생애 주기 설정
+        </h2>
+        <div class="space-y-4">
+          <div>
+            <div class="flex justify-between text-sm mb-1.5">
+              <label class="font-medium text-slate-600">현재 나이</label>
+              <span class="font-bold text-emerald-600" id="disp-currentAge">35세</span>
+            </div>
+            <input type="range" id="currentAge" min="20" max="70" value="35" class="w-full h-2 bg-slate-200 rounded-lg cursor-pointer">
+          </div>
+          <div>
+            <div class="flex justify-between text-sm mb-1.5">
+              <label class="font-medium text-slate-600">희망 은퇴 나이</label>
+              <span class="font-bold text-emerald-600" id="disp-retireAge">60세</span>
+            </div>
+            <input type="range" id="retireAge" min="30" max="80" value="60" class="w-full h-2 bg-slate-200 rounded-lg cursor-pointer">
+          </div>
+          <div>
+            <div class="flex justify-between text-sm mb-1.5">
+              <label class="font-medium text-slate-600">예상 기대 수명</label>
+              <span class="font-bold text-emerald-600" id="disp-lifeExpectancy">90세</span>
+            </div>
+            <input type="range" id="lifeExpectancy" min="70" max="105" value="90" class="w-full h-2 bg-slate-200 rounded-lg cursor-pointer">
+          </div>
+        </div>
+      </section>
+
+      <section class="bg-white p-5 rounded-2xl shadow-sm border border-slate-200">
+        <h2 class="text-base font-bold text-slate-900 mb-4 flex items-center gap-2">
+          <span class="w-2.5 h-2.5 rounded-full bg-blue-500"></span>
+          자산 및 저축 계획 (은퇴 전)
+        </h2>
+        <div class="space-y-4">
+          <div>
+            <label class="block text-sm font-medium text-slate-600 mb-1">현재 순자산 (투자/예적금)</label>
+            <div class="relative">
+              <input type="number" id="currentAssets" value="10000" step="500" class="w-full px-3 py-2 pr-12 rounded-xl border border-slate-300 focus:outline-none focus:ring-2 focus:ring-emerald-500 font-semibold text-slate-800 text-right">
+              <span class="absolute right-3 top-2.5 text-sm text-slate-400">만원</span>
+            </div>
+            <p class="text-xs text-slate-400 mt-1" id="korean-currentAssets">1억 원</p>
+          </div>
+
+          <div>
+            <label class="block text-sm font-medium text-slate-600 mb-1">월 저축 및 투자액</label>
+            <div class="relative">
+              <input type="number" id="monthlySavings" value="150" step="10" class="w-full px-3 py-2 pr-12 rounded-xl border border-slate-300 focus:outline-none focus:ring-2 focus:ring-emerald-500 font-semibold text-slate-800 text-right">
+              <span class="absolute right-3 top-2.5 text-sm text-slate-400">만원</span>
+            </div>
+            <p class="text-xs text-slate-400 mt-1" id="korean-monthlySavings">월 150만 원</p>
+          </div>
+
+          <div>
+            <div class="flex justify-between text-sm mb-1.5">
+              <label class="font-medium text-slate-600">은퇴 전 연간 투자 수익률</label>
+              <span class="font-bold text-blue-600" id="disp-preYield">6.0%</span>
+            </div>
+            <input type="range" id="preYield" min="1.0" max="15.0" step="0.5" value="6.0" class="w-full h-2 bg-slate-200 rounded-lg cursor-pointer">
+          </div>
+        </div>
+      </section>
+
+      <section class="bg-white p-5 rounded-2xl shadow-sm border border-slate-200">
+        <h2 class="text-base font-bold text-slate-900 mb-4 flex items-center gap-2">
+          <span class="w-2.5 h-2.5 rounded-full bg-amber-500"></span>
+          은퇴 후 생활비 및 연금 소득
+        </h2>
+        <div class="space-y-4">
+          <div>
+            <label class="block text-sm font-medium text-slate-600 mb-1">은퇴 후 희망 월 생활비 (현재 가치 기준)</label>
+            <div class="relative">
+              <input type="number" id="retireExpense" value="300" step="10" class="w-full px-3 py-2 pr-12 rounded-xl border border-slate-300 focus:outline-none focus:ring-2 focus:ring-emerald-500 font-semibold text-slate-800 text-right">
+              <span class="absolute right-3 top-2.5 text-sm text-slate-400">만원</span>
+            </div>
+            <p class="text-xs text-slate-400 mt-1" id="korean-retireExpense">월 300만 원</p>
+          </div>
+
+          <div class="grid grid-cols-2 gap-3">
+            <div>
+              <label class="block text-xs font-medium text-slate-600 mb-1">연금 개시 나이</label>
+              <div class="relative">
+                <input type="number" id="pensionStartAge" value="65" min="50" max="75" class="w-full px-3 py-2 pr-8 rounded-xl border border-slate-300 focus:ring-2 focus:ring-emerald-500 text-right font-medium">
+                <span class="absolute right-3 top-2.5 text-xs text-slate-400">세</span>
+              </div>
+            </div>
+            <div>
+              <label class="block text-xs font-medium text-slate-600 mb-1">월 예상 연금 (국민/개인)</label>
+              <div class="relative">
+                <input type="number" id="monthlyPension" value="120" step="10" class="w-full px-3 py-2 pr-10 rounded-xl border border-slate-300 focus:ring-2 focus:ring-emerald-500 text-right font-medium">
+                <span class="absolute right-3 top-2.5 text-xs text-slate-400">만원</span>
+              </div>
+            </div>
+          </div>
+
+          <div class="grid grid-cols-2 gap-3 pt-1">
+            <div>
+              <div class="flex justify-between text-xs mb-1">
+                <span class="text-slate-600 font-medium">은퇴 후 운용 수익률</span>
+                <span class="font-bold text-amber-600" id="disp-postYield">4.0%</span>
+              </div>
+              <input type="range" id="postYield" min="0.5" max="10.0" step="0.5" value="4.0" class="w-full h-2 bg-slate-200 rounded-lg cursor-pointer">
+            </div>
+            <div>
+              <div class="flex justify-between text-xs mb-1">
+                <span class="text-slate-600 font-medium">연간 물가상승률</span>
+                <span class="font-bold text-rose-500" id="disp-inflation">2.5%</span>
+              </div>
+              <input type="range" id="inflation" min="1.0" max="6.0" step="0.5" value="2.5" class="w-full h-2 bg-slate-200 rounded-lg cursor-pointer">
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section class="bg-white p-5 rounded-2xl shadow-sm border border-slate-200">
+        <div class="flex items-center justify-between mb-3">
+          <h2 class="text-base font-bold text-slate-900 flex items-center gap-2">
+            <span class="w-2.5 h-2.5 rounded-full bg-purple-500"></span>
+            목돈 이벤트 (주택/자녀지원 등)
+          </h2>
+          <button onclick="addEventInput()" class="text-xs bg-purple-50 hover:bg-purple-100 text-purple-700 font-semibold px-2 py-1 rounded-md transition">+ 이벤트 추가</button>
+        </div>
+        <p class="text-xs text-slate-500 mb-3">특정 나이에 발생하는 목돈 지출(-) 또는 자산 매각/상속 유입(+)</p>
+        <div id="eventsContainer" class="space-y-2">
+          <!-- Dynamic event rows inserted here -->
+        </div>
+      </section>
+
+    </div>
+
+    <!-- Right Side Dashboard & Visualization -->
+    <div class="lg:col-span-7 space-y-6">
+
+      <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+        
+        <!-- Max Assets Card -->
+        <div class="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm relative overflow-hidden">
+          <div class="absolute -right-3 -top-3 w-16 h-16 bg-emerald-50 rounded-full flex items-center justify-center opacity-60">
+            <svg class="w-8 h-8 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6"></path></svg>
+          </div>
+          <span class="text-xs font-semibold text-slate-500">은퇴 시점 총 자산</span>
+          <div class="text-2xl font-extrabold text-slate-900 mt-2" id="kpi-peakAssets">-</div>
+          <p class="text-xs text-slate-400 mt-1" id="kpi-retireAgeLabel">60세 기준</p>
+        </div>
+
+        <!-- Depletion Age Card -->
+        <div class="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm relative overflow-hidden" id="kpi-depletion-card">
+          <div class="absolute -right-3 -top-3 w-16 h-16 bg-blue-50 rounded-full flex items-center justify-center opacity-60">
+            <svg class="w-8 h-8 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+          </div>
+          <span class="text-xs font-semibold text-slate-500">자산 고갈 예상 나이</span>
+          <div class="text-2xl font-extrabold text-slate-900 mt-2" id="kpi-depleteAge">-</div>
+          <p class="text-xs font-medium mt-1" id="kpi-statusLabel">안전한 은퇴 구간</p>
+        </div>
+
+        <!-- Safe Withdrawal / Health Score -->
+        <div class="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm relative overflow-hidden">
+          <div class="absolute -right-3 -top-3 w-16 h-16 bg-purple-50 rounded-full flex items-center justify-center opacity-60">
+            <svg class="w-8 h-8 text-purple-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"></path></svg>
+          </div>
+          <span class="text-xs font-semibold text-slate-500">초기 은퇴 인출률</span>
+          <div class="text-2xl font-extrabold text-slate-900 mt-2" id="kpi-withdrawalRate">-</div>
+          <p class="text-xs text-slate-400 mt-1">4.0% 이하 권장 (Trinity Study)</p>
+        </div>
+
+      </div>
+
+      <div class="bg-white p-5 rounded-2xl shadow-sm border border-slate-200">
+        <div class="flex flex-col sm:flex-row sm:items-center justify-between pb-4 mb-2 border-b border-slate-100 gap-2">
+          <div>
+            <h3 class="font-bold text-slate-900 text-base">생애 자산 변화 곡선</h3>
+            <p class="text-xs text-slate-500">축적기(성장) 및 인출기(소진) 자산 변동 추이</p>
+          </div>
+          <div class="flex items-center gap-3 text-xs">
+            <span class="inline-flex items-center gap-1.5"><span class="w-3 h-3 rounded-full bg-emerald-500"></span>순자산 잔액</span>
+            <span class="inline-flex items-center gap-1.5"><span class="w-3 h-3 rounded-full bg-slate-300"></span>원금 총투입액</span>
+          </div>
+        </div>
+
+        <div class="relative w-full h-[320px] sm:h-[380px]">
+          <canvas id="assetChart"></canvas>
+        </div>
+      </div>
+
+      <div class="bg-white p-5 rounded-2xl shadow-sm border border-slate-200">
+        <h3 class="font-bold text-slate-900 text-base mb-3 flex items-center gap-2">
+          <svg class="w-5 h-5 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+          종합 은퇴 건강도 진단 및 솔루션
+        </h3>
+        
+        <div id="diagnosticCard" class="p-4 rounded-xl mb-4 bg-emerald-50 border border-emerald-100 text-sm">
+          <!-- Dynamic guidance text will be injected here -->
+        </div>
+
+        <!-- Tab & Yearly Detailed Table Toggle -->
+        <div class="border-t border-slate-100 pt-3">
+          <button id="tableToggleBtn" onclick="toggleTable()" class="w-full flex items-center justify-between px-3 py-2 text-xs font-semibold text-slate-600 hover:text-slate-900 hover:bg-slate-50 rounded-lg transition">
+            <span>연도별 상세 수지 내역표 (나이별 자산/소득/지출) 보기</span>
+            <svg id="tableToggleIcon" class="w-4 h-4 transform transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg>
+          </button>
+          
+          <div id="tableSection" class="hidden mt-3 max-h-72 overflow-y-auto border border-slate-200 rounded-xl text-xs">
+            <table class="w-full text-left border-collapse">
+              <thead class="bg-slate-100 sticky top-0 text-slate-600 font-semibold">
+                <tr>
+                  <th class="p-2.5">나이</th>
+                  <th class="p-2.5">상태</th>
+                  <th class="p-2.5 text-right">기초 자산</th>
+                  <th class="p-2.5 text-right">연간 수입/저축</th>
+                  <th class="p-2.5 text-right">연간 지출</th>
+                  <th class="p-2.5 text-right">투자 손익</th>
+                  <th class="p-2.5 text-right">기말 자산</th>
+                </tr>
+              </thead>
+              <tbody id="yearlyTableBody" class="divide-y divide-slate-100 font-mono">
+                <!-- Dynamically populated rows -->
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+      </div>
+
+    </div>
+  </main>
+
+  <div id="toast" class="fixed bottom-6 right-6 max-w-sm bg-slate-900 text-white px-4 py-3 rounded-xl shadow-xl text-xs font-medium transform transition-all duration-300 translate-y-16 opacity-0 pointer-events-none z-50 flex items-center gap-2">
+    <svg class="w-4 h-4 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>
+    <span id="toastMsg">알림 메시지</span>
+  </div>
+
+  <script>
+    // State management
+    let chartInstance = null;
+    let customEvents = [
+      { id: 1, age: 48, amount: -3000, desc: '자녀 대학/결혼 지원' }
+    ];
+
+    // Helper: Format Won to Korean currency units
+    function formatCurrency(manwon) {
+      if (isNaN(manwon)) return '0원';
+      const abs = Math.abs(manwon);
+      const sign = manwon < 0 ? '-' : '';
+
+      if (abs >= 10000) {
+        const eok = Math.floor(abs / 10000);
+        const rest = Math.round(abs % 10000);
+        return rest > 0 ? `${sign}${eok}억 ${rest.toLocaleString()}만 원` : `${sign}${eok}억 원`;
+      }
+      return `${sign}${Math.round(abs).toLocaleString()}만 원`;
+    }
+
+    // Toast notification
+    function showToast(message) {
+      const toast = document.getElementById('toast');
+      const toastMsg = document.getElementById('toastMsg');
+      toastMsg.innerText = message;
+      toast.classList.remove('translate-y-16', 'opacity-0', 'pointer-events-none');
+      toast.classList.add('translate-y-0', 'opacity-100');
+      setTimeout(() => {
+        toast.classList.add('translate-y-16', 'opacity-0', 'pointer-events-none');
+        toast.classList.remove('translate-y-0', 'opacity-100');
+      }, 2500);
+    }
+
+    function applyPreset(type) {
+      if (type === 'standard') {
+        document.getElementById('currentAge').value = 35;
+        document.getElementById('retireAge').value = 60;
+        document.getElementById('lifeExpectancy').value = 90;
+        document.getElementById('currentAssets').value = 10000;
+        document.getElementById('monthlySavings').value = 150;
+        document.getElementById('preYield').value = 6.0;
+        document.getElementById('retireExpense').value = 300;
+        document.getElementById('pensionStartAge').value = 65;
+        document.getElementById('monthlyPension').value = 130;
+        document.getElementById('postYield').value = 4.0;
+        document.getElementById('inflation').value = 2.5;
+        customEvents = [{ id: 1, age: 50, amount: -3000, desc: '자녀 학자금 지원' }];
+        showToast('일반 직장인 템플릿이 적용되었습니다.');
+      } else if (type === 'fire') {
+        document.getElementById('currentAge').value = 32;
+        document.getElementById('retireAge').value = 45;
+        document.getElementById('lifeExpectancy').value = 92;
+        document.getElementById('currentAssets').value = 15000;
+        document.getElementById('monthlySavings').value = 350;
+        document.getElementById('preYield').value = 8.0;
+        document.getElementById('retireExpense').value = 320;
+        document.getElementById('pensionStartAge').value = 65;
+        document.getElementById('monthlyPension').value = 100;
+        document.getElementById('postYield').value = 5.0;
+        document.getElementById('inflation').value = 2.5;
+        customEvents = [];
+        showToast('파이어족(조기은퇴) 템플릿이 적용되었습니다.');
+      } else if (type === 'senior') {
+        document.getElementById('currentAge').value = 52;
+        document.getElementById('retireAge').value = 62;
+        document.getElementById('lifeExpectancy').value = 92;
+        document.getElementById('currentAssets').value = 45000;
+        document.getElementById('monthlySavings').value = 200;
+        document.getElementById('preYield').value = 5.0;
+        document.getElementById('retireExpense').value = 350;
+        document.getElementById('pensionStartAge').value = 65;
+        document.getElementById('monthlyPension').value = 180;
+        document.getElementById('postYield').value = 3.5;
+        document.getElementById('inflation').value = 2.2;
+        customEvents = [{ id: 1, age: 62, amount: 10000, desc: '퇴직금 정산 유입' }];
+        showToast('50대 은퇴 준비기 템플릿이 적용되었습니다.');
+      }
+      renderEvents();
+      runSimulation();
+    }
+
+    function renderEvents() {
+      const container = document.getElementById('eventsContainer');
+      container.innerHTML = '';
+      if (customEvents.length === 0) {
+        container.innerHTML = `<div class="text-center py-2 text-slate-400 text-xs italic">등록된 목돈 이벤트가 없습니다.</div>`;
+        return;
+      }
+      customEvents.forEach((ev, idx) => {
+        const div = document.createElement('div');
+        div.className = 'flex items-center gap-2 bg-slate-50 p-2 rounded-xl border border-slate-200 text-xs';
+        div.innerHTML = `
+          <input type="text" value="${ev.desc}" onchange="updateEvent(${ev.id}, 'desc', this.value)" class="flex-1 bg-white border border-slate-200 px-2 py-1 rounded font-medium text-slate-700" placeholder="항목명">
+          <div class="flex items-center gap-1">
+            <input type="number" value="${ev.age}" onchange="updateEvent(${ev.id}, 'age', Number(this.value))" class="w-12 bg-white border border-slate-200 px-1 py-1 rounded text-right" min="20" max="100">
+            <span class="text-slate-500">세</span>
+          </div>
+          <div class="flex items-center gap-1">
+            <input type="number" value="${ev.amount}" step="500" onchange="updateEvent(${ev.id}, 'amount', Number(this.value))" class="w-20 bg-white border border-slate-200 px-1 py-1 rounded text-right font-medium ${ev.amount >= 0 ? 'text-emerald-600' : 'text-rose-600'}">
+            <span class="text-slate-500">만원</span>
+          </div>
+          <button onclick="removeEvent(${ev.id})" class="text-slate-400 hover:text-rose-500 p-1">
+            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+          </button>
+        `;
+        container.appendChild(div);
+      });
+    }
+
+    function addEventInput() {
+      const currentAge = Number(document.getElementById('currentAge').value);
+      const newId = Date.now();
+      customEvents.push({
+        id: newId,
+        age: currentAge + 10,
+        amount: -2000,
+        desc: '목돈 지출 계획'
+      });
+      renderEvents();
+      runSimulation();
+    }
+
+    function removeEvent(id) {
+      customEvents = customEvents.filter(e => e.id !== id);
+      renderEvents();
+      runSimulation();
+    }
+
+    function updateEvent(id, key, val) {
+      const target = customEvents.find(e => e.id === id);
+      if (target) {
+        target[key] = val;
+        runSimulation();
+      }
+    }
+
+    function runSimulation() {
+      // 1. Gather all inputs
+      let currentAge = parseInt(document.getElementById('currentAge').value, 10);
+      let retireAge = parseInt(document.getElementById('retireAge').value, 10);
+      let lifeExpectancy = parseInt(document.getElementById('lifeExpectancy').value, 10);
+
+      // Guard conditions
+      if (retireAge <= currentAge) {
+        retireAge = currentAge + 1;
+        document.getElementById('retireAge').value = retireAge;
+      }
+      if (lifeExpectancy <= retireAge) {
+        lifeExpectancy = retireAge + 5;
+        document.getElementById('lifeExpectancy').value = lifeExpectancy;
+      }
+
+      // Sliders label updates
+      document.getElementById('disp-currentAge').innerText = `${currentAge}세`;
+      document.getElementById('disp-retireAge').innerText = `${retireAge}세`;
+      document.getElementById('disp-lifeExpectancy').innerText = `${lifeExpectancy}세`;
+      document.getElementById('kpi-retireAgeLabel').innerText = `${retireAge}세 은퇴 시점`;
+
+      const currentAssets = parseFloat(document.getElementById('currentAssets').value) || 0;
+      const monthlySavings = parseFloat(document.getElementById('monthlySavings').value) || 0;
+      const preYield = parseFloat(document.getElementById('preYield').value) / 100;
+      const retireExpense = parseFloat(document.getElementById('retireExpense').value) || 0;
+      const pensionStartAge = parseInt(document.getElementById('pensionStartAge').value, 10) || 65;
+      const monthlyPension = parseFloat(document.getElementById('monthlyPension').value) || 0;
+      const postYield = parseFloat(document.getElementById('postYield').value) / 100;
+      const inflation = parseFloat(document.getElementById('inflation').value) / 100;
+
+      // Update badge displays
+      document.getElementById('disp-preYield').innerText = `${(preYield * 100).toFixed(1)}%`;
+      document.getElementById('disp-postYield').innerText = `${(postYield * 100).toFixed(1)}%`;
+      document.getElementById('disp-inflation').innerText = `${(inflation * 100).toFixed(1)}%`;
+      document.getElementById('korean-currentAssets').innerText = formatCurrency(currentAssets);
+      document.getElementById('korean-monthlySavings').innerText = `월 ${formatCurrency(monthlySavings)}`;
+      document.getElementById('korean-retireExpense').innerText = `월 ${formatCurrency(retireExpense)}`;
+
+      const years = lifeExpectancy - currentAge;
+      const labels = [];
+      const assetHistory = [];
+      const investedPrincipalHistory = [];
+      const tableData = [];
+
+      let runningAssets = currentAssets;
+      let runningPrincipal = currentAssets;
+      let depletionAge = null;
+      let peakAssets = 0;
+      let assetsAtRetirement = 0;
+
+      for (let i = 0; i <= years; i++) {
+        const age = currentAge + i;
+        labels.push(`${age}세`);
+
+        const isAccumulation = age < retireAge;
+        const initialAsset = runningAssets;
+
+        let annualInflow = 0;
+        let annualExpense = 0;
+        let investmentReturn = 0;
+
+        // Check one-time custom events for this age
+        const matchedEvents = customEvents.filter(e => e.age === age);
+        const eventSum = matchedEvents.reduce((acc, cur) => acc + (cur.amount || 0), 0);
+
+        if (isAccumulation) {
+          // Accumulation Phase
+          annualInflow = monthlySavings * 12;
+          runningPrincipal += annualInflow;
+          
+          // Investment return on beginning asset + mid-year contributions
+          investmentReturn = (runningAssets * preYield) + (annualInflow * preYield * 0.5);
+          runningAssets = runningAssets + annualInflow + investmentReturn + eventSum;
+          
+          if (age === retireAge - 1) {
+            assetsAtRetirement = runningAssets;
+          }
+        } else {
+          // Decumulation Phase
+          // Expense adjusted for inflation
+          const inflationFactor = Math.pow(1 + inflation, i);
+          const nominalMonthlyExpense = retireExpense * inflationFactor;
+          annualExpense = nominalMonthlyExpense * 12;
+
+          // Pension inflow (also indexed to inflation commonly in national pension)
+          if (age >= pensionStartAge) {
+            const nominalMonthlyPension = monthlyPension * inflationFactor;
+            annualInflow = nominalMonthlyPension * 12;
+          }
+
+          const netCashflow = annualInflow - annualExpense + eventSum;
+          
+          // Investment returns on remaining portfolio
+          investmentReturn = (runningAssets * postYield) + (netCashflow * postYield * 0.5);
+          runningAssets = runningAssets + netCashflow + investmentReturn;
+        }
+
+        if (runningAssets > peakAssets) {
+          peakAssets = runningAssets;
+        }
+
+        if (runningAssets <= 0 && depletionAge === null) {
+          depletionAge = age;
+          runningAssets = 0;
+        }
+
+        if (runningAssets < 0) {
+          runningAssets = 0;
+        }
+
+        assetHistory.push(Math.round(runningAssets));
+        investedPrincipalHistory.push(Math.round(runningPrincipal));
+
+        tableData.push({
+          age,
+          phase: isAccumulation ? '축적기' : '은퇴기',
+          initial: initialAsset,
+          inflow: annualInflow + (eventSum > 0 ? eventSum : 0),
+          outflow: annualExpense + (eventSum < 0 ? Math.abs(eventSum) : 0),
+          returns: investmentReturn,
+          ending: runningAssets
+        });
+      }
+
+      if (assetsAtRetirement === 0) assetsAtRetirement = peakAssets;
+
+      document.getElementById('kpi-peakAssets').innerText = formatCurrency(assetsAtRetirement);
+      
+      // Initial Withdrawal Rate calculation
+      const initialRetireInflation = Math.pow(1 + inflation, retireAge - currentAge);
+      const firstYearExpense = (retireExpense * 12) * initialRetireInflation;
+      const initialPension = (retireAge >= pensionStartAge ? monthlyPension * 12 : 0) * initialRetireInflation;
+      const netFirstYearWithdrawal = Math.max(0, firstYearExpense - initialPension);
+
+      let withdrawalRate = 0;
+      if (assetsAtRetirement > 0) {
+        withdrawalRate = (netFirstYearWithdrawal / assetsAtRetirement) * 100;
+        document.getElementById('kpi-withdrawalRate').innerText = `${withdrawalRate.toFixed(1)}%`;
+      } else {
+        document.getElementById('kpi-withdrawalRate').innerText = '측정불가';
+      }
+
+      // Depletion KPI Card UI
+      const depleteCard = document.getElementById('kpi-depletion-card');
+      const depleteAgeText = document.getElementById('kpi-depleteAge');
+      const statusLabel = document.getElementById('kpi-statusLabel');
+
+      if (depletionAge === null) {
+        depleteAgeText.innerText = `${lifeExpectancy}세+ 유지`;
+        statusLabel.innerText = '기대수명까지 안전';
+        statusLabel.className = 'text-xs font-semibold text-emerald-600 mt-1';
+        depleteCard.className = 'bg-white p-5 rounded-2xl border border-emerald-200 shadow-sm relative overflow-hidden';
+      } else {
+        depleteAgeText.innerText = `${depletionAge}세 고갈`;
+        const diff = lifeExpectancy - depletionAge;
+        statusLabel.innerText = `기대수명보다 ${diff}년 부족`;
+        statusLabel.className = 'text-xs font-semibold text-rose-600 mt-1';
+        depleteCard.className = 'bg-white p-5 rounded-2xl border border-rose-200 shadow-sm relative overflow-hidden';
+      }
+
+      generateDiagnosticReport({
+        currentAge,
+        retireAge,
+        lifeExpectancy,
+        depletionAge,
+        assetsAtRetirement,
+        withdrawalRate,
+        monthlySavings,
+        retireExpense,
+        inflation
+      });
+
+      // Update Chart & Table
+      updateChart(labels, assetHistory, investedPrincipalHistory, retireAge - currentAge);
+      populateTable(tableData);
+    }
+
+    function generateDiagnosticReport(data) {
+      const card = document.getElementById('diagnosticCard');
+      let html = '';
+
+      if (data.depletionAge === null) {
+        html = `
+          <div class="flex items-start gap-3 text-emerald-900">
+            <span class="text-xl">🎉</span>
+            <div>
+              <p class="font-bold text-emerald-800 mb-1">매우 안정적인 은퇴 계획입니다!</p>
+              <p class="text-xs text-emerald-700 leading-relaxed">
+                현재 저축률과 기대 수익률을 유지할 경우, 목표하신 ${data.lifeExpectancy}세까지 자산이 고갈되지 않고 안정적으로 유지됩니다.
+                인출률 또한 <strong>${data.withdrawalRate.toFixed(1)}%</strong> 수준으로 시장 충격에 대한 방어력이 충분합니다.
+              </p>
+            </div>
+          </div>
+        `;
+        card.className = 'p-4 rounded-xl mb-4 bg-emerald-50 border border-emerald-200 text-sm';
+      } else {
+        // Shortfall actions
+        const targetSavings = Math.round(data.monthlySavings * 1.3);
+        const targetExpense = Math.round(data.retireExpense * 0.85);
+
+        html = `
+          <div class="flex items-start gap-3 text-rose-900">
+            <span class="text-xl">⚠️</span>
+            <div>
+              <p class="font-bold text-rose-800 mb-1">주의: ${data.depletionAge}세에 자산 고갈 위험이 예상됩니다.</p>
+              <p class="text-xs text-rose-700 mb-2 leading-relaxed">
+                현재 상태를 유지하면 기대수명(${data.lifeExpectancy}세) 도달 전 약 ${data.lifeExpectancy - data.depletionAge}년간 재정 결손이 발생할 수 있습니다.
+              </p>
+              <div class="bg-white/80 p-3 rounded-lg border border-rose-200 space-y-1 text-xs text-slate-700">
+                <p class="font-semibold text-slate-800">💡 자산 수명 연장을 위한 3대 권장 솔루션:</p>
+                <p>1. <strong>저축액 증액:</strong> 월 저축액을 <span class="text-emerald-700 font-bold">${targetSavings}만원</span>(+30%)으로 상향</p>
+                <p>2. <strong>생활비 다이어트:</strong> 은퇴 후 월 생활비를 <span class="text-emerald-700 font-bold">${targetExpense}만원</span>(-15%)으로 조정</p>
+                <p>3. <strong>은퇴 시기 이연:</strong> 은퇴 나이를 <strong>${data.retireAge + 2}~${data.retireAge + 3}세</strong> 늦추거나 점진적 퇴직(파트타임 소득 창출)</p>
+              </div>
+            </div>
+          </div>
+        `;
+        card.className = 'p-4 rounded-xl mb-4 bg-rose-50 border border-rose-200 text-sm';
+      }
+
+      card.innerHTML = html;
+    }
+
+    function updateChart(labels, assetHistory, principalHistory, retireIndex) {
+      const ctx = document.getElementById('assetChart').getContext('2d');
+
+      const gradient = ctx.createLinearGradient(0, 0, 0, 300);
+      gradient.addColorStop(0, 'rgba(16, 185, 129, 0.4)');
+      gradient.addColorStop(1, 'rgba(16, 185, 129, 0.0)');
+
+      if (chartInstance) {
+        chartInstance.destroy();
+      }
+
+      chartInstance = new Chart(ctx, {
+        type: 'line',
+        data: {
+          labels: labels,
+          datasets: [
+            {
+              label: '예상 순자산 잔액',
+              data: assetHistory,
+              borderColor: '#10b981',
+              backgroundColor: gradient,
+              fill: true,
+              borderWidth: 2.5,
+              pointRadius: 0,
+              pointHoverRadius: 5,
+              tension: 0.25
+            },
+            {
+              label: '총 투입 원금',
+              data: principalHistory,
+              borderColor: '#94a3b8',
+              borderDash: [5, 5],
+              fill: false,
+              borderWidth: 1.5,
+              pointRadius: 0,
+              pointHoverRadius: 4,
+              tension: 0.1
+            }
+          ]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          interaction: {
+            mode: 'index',
+            intersect: false
+          },
+          plugins: {
+            legend: {
+              display: false
+            },
+            tooltip: {
+              backgroundColor: 'rgba(15, 23, 42, 0.9)',
+              titleFont: { size: 12, family: 'Pretendard' },
+              bodyFont: { size: 12, family: 'Pretendard' },
+              padding: 10,
+              callbacks: {
+                label: function(context) {
+                  return ` ${context.dataset.label}: ${formatCurrency(context.raw)}`;
+                }
+              }
+            }
+          },
+          scales: {
+            x: {
+              grid: { display: false },
+              ticks: { maxTicksLimit: 12, font: { size: 11 } }
+            },
+            y: {
+              grid: { color: '#f1f5f9' },
+              ticks: {
+                callback: function(val) {
+                  if (val >= 10000) return (val / 10000).toFixed(0) + '억';
+                  return val + '만';
+                },
+                font: { size: 11 }
+              }
+            }
+          }
+        }
+      });
+    }
+
+    function populateTable(rows) {
+      const tbody = document.getElementById('yearlyTableBody');
+      tbody.innerHTML = '';
+      rows.forEach(r => {
+        const tr = document.createElement('tr');
+        tr.className = r.phase === '은퇴기' ? 'bg-amber-50/40 hover:bg-amber-50' : 'hover:bg-slate-50';
+        tr.innerHTML = `
+          <td class="p-2.5 font-bold">${r.age}세</td>
+          <td class="p-2.5"><span class="px-1.5 py-0.5 rounded text-[10px] font-semibold ${r.phase === '은퇴기' ? 'bg-amber-100 text-amber-800' : 'bg-emerald-100 text-emerald-800'}">${r.phase}</span></td>
+          <td class="p-2.5 text-right text-slate-500">${formatCurrency(r.initial)}</td>
+          <td class="p-2.5 text-right text-emerald-600 font-medium">+${formatCurrency(r.inflow)}</td>
+          <td class="p-2.5 text-right text-rose-500 font-medium">-${formatCurrency(r.outflow)}</td>
+          <td class="p-2.5 text-right text-blue-600 font-medium">${r.returns >= 0 ? '+' : ''}${formatCurrency(r.returns)}</td>
+          <td class="p-2.5 text-right font-bold text-slate-900">${formatCurrency(r.ending)}</td>
+        `;
+        tbody.appendChild(tr);
+      });
+    }
+
+    function toggleTable() {
+      const section = document.getElementById('tableSection');
+      const icon = document.getElementById('tableToggleIcon');
+      if (section.classList.contains('hidden')) {
+        section.classList.remove('hidden');
+        icon.classList.add('rotate-180');
+      } else {
+        section.classList.add('hidden');
+        icon.classList.remove('rotate-180');
+      }
+    }
+
+    window.addEventListener('DOMContentLoaded', () => {
+      const inputs = [
+        'currentAge', 'retireAge', 'lifeExpectancy',
+        'currentAssets', 'monthlySavings', 'preYield',
+        'retireExpense', 'pensionStartAge', 'monthlyPension',
+        'postYield', 'inflation'
+      ];
+
+      inputs.forEach(id => {
+        const el = document.getElementById(id);
+        el.addEventListener('input', runSimulation);
+      });
+
+      renderEvents();
+      runSimulation();
+    });
+  </script>
+</body>
+</html>
